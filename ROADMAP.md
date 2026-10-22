@@ -134,6 +134,7 @@ app's JSON control channel (`deckcraft --control PORT`).
 
 | Date | What landed |
 |---|---|
+| 2026-10-22 | Chart bars and their legend keys draw the series' own pattern fill (`a:pattFill`, now read and written) and draw nothing for `a:noFill`, with the series outline where it has one, as PowerPoint for Mac does (synthetic probe); they took the palette's colour before. Lines, areas and markers use a pattern's foreground colour |
 | 2026-10-23 | Format Background ▸ Apply to All also sets the background of the slide masters the slides use (and clears their layouts' overrides), so new slides keep it (#891) |
 | 2026-10-22 | Table text takes the master's other-text style (`otherStyle`), shapes and text boxes the presentation's default text style, as PowerPoint for Mac draws them (synthetic probe: 14 pt cells under a 14 pt `otherStyle` and a 26 pt `defaultTextStyle`); a private deck's table had been drawn 20 pt instead of 18 |
 | 2026-10-18 | Find (Ctrl+F): "Find what:" has the keyboard as soon as the dialog opens, and keeps it after Enter finds a match, so the search can be typed and changed without clicking the field (#951) |
@@ -276,6 +277,7 @@ app's JSON control channel (`deckcraft --control PORT`).
 | 2026-10-16 | trivial | Progress log: responsive mouse-wheel navigation on the fitted canvas |
 | 2026-10-21 | trivial | Progress log: theme `spDef` anchor no longer applied to a file's own shapes |
 | 2026-10-21 | trivial | Progress log: 3-D sizes in scaled groups stay in points |
+| 2026-10-22 | trivial | Progress log: chart series pattern and no fills |
 | 2026-10-14 | trivial | remote MCP checks reply IDs, envelopes and bounded newline framing (#718) |
 | 2026-10-14 | minor | Gray list markers on empty paragraphs while editing; caret keeps the list indent before typing |
 | 2026-10-14 | minor | Community PR wave folded: headline breadth 84% over 191 features (P0 92%, P1 82%, P2 55%) and the feature-area breadths from `cargo xtask parity`; one row per area; Upcoming item 2 merged; per-PR count notes dropped from the progress log. Ready stays ~55%, stage alpha |
