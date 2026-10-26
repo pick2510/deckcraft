@@ -91,7 +91,12 @@ fn def_rpr(w: &mut W, color: Option<&deckcraft_model::ColorRef>, size: Option<f6
 /// the default run properties, on the axes, the legend, the data labels and the chart itself, as
 /// PowerPoint writes it. Nothing without either: the theme's default then applies on reading.
 fn tx_pr(w: &mut W, c: &Chart) {
-    if c.text_color.is_none() && c.text_size.is_none() {
+    tx_pr_sized(w, c, c.text_size);
+}
+
+/// [`tx_pr`] with another text size (data labels drawn smaller than the chart's text).
+fn tx_pr_sized(w: &mut W, c: &Chart, size: Option<f64>) {
+    if c.text_color.is_none() && size.is_none() {
         return;
     }
     w.open0("c:txPr");
@@ -99,7 +104,7 @@ fn tx_pr(w: &mut W, c: &Chart) {
     w.empty0("a:lstStyle");
     w.open0("a:p");
     w.open0("a:pPr");
-    def_rpr(w, c.text_color.as_ref(), c.text_size);
+    def_rpr(w, c.text_color.as_ref(), size);
     w.close("a:pPr");
     w.empty("a:endParaRPr", A::new().a("lang", "en-US"));
     w.close("a:p");
@@ -276,7 +281,7 @@ fn series(w: &mut W, c: &Chart, s: &Series, i: usize, kind: ChartType, g: Group)
         }
     }
     if let Some(d) = s.data_labels {
-        data_labels(w, c, d);
+        data_labels(w, c, g, d);
     }
     // After labels, before the category and value caches (ECMA-376 series content order).
     if matches!(g, Group::Bar | Group::Line | Group::Area | Group::Scatter) {
@@ -384,9 +389,12 @@ fn trendline(w: &mut W, t: &Trendline) {
     w.close("c:trendline");
 }
 
-fn data_labels(w: &mut W, c: &Chart, show: bool) {
+fn data_labels(w: &mut W, c: &Chart, g: Group, show: bool) {
     w.open0("c:dLbls");
-    tx_pr(w, c);
+    // At the size they are drawn: a bar's or radar point's label at 0.9 of the chart's text, a
+    // slice's at its full size.
+    let size = c.text_size.map(|t| if matches!(g, Group::Bar | Group::Radar) { t * 0.9 } else { t });
+    tx_pr_sized(w, c, size);
     for (n, v) in [
         ("c:showLegendKey", false),
         ("c:showVal", show),
@@ -531,7 +539,7 @@ fn plot_group(w: &mut W, c: &Chart, kind: ChartType, list: &[(usize, &Series)]) 
         series(w, c, s, *i, kind, g);
     }
     if c.data_labels {
-        data_labels(w, c, true);
+        data_labels(w, c, g, true);
     }
     match g {
         Group::Bar => {
@@ -1142,6 +1150,16 @@ mod tests {
         assert!(xml.contains(r#"<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1600"/>"#), "{xml}");
         assert_eq!(xml.matches(r#"<a:defRPr sz="2200"/>"#).count(), 1, "the chart title");
         assert!(xml.contains(r#"<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1600"/></a:pPr><a:r><a:t>Month"#));
+        // A bar's data labels at the 0.9 of the text they are drawn at, a slice's at all of it.
+        c.series[0].data_labels = Some(true);
+        let labelled = String::from_utf8(super::chart_xml_in(&c, Some((560.0, 360.0))).0).unwrap();
+        assert!(labelled.contains(r#"<c:dLbls><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1440"/>"#), "{labelled}");
+        assert_eq!(read(&c, Some((560.0, 360.0))).text_size, Some(16.0), "labels don't set the chart's size");
+        let mut pie = c.clone();
+        pie.kind = ChartType::Pie;
+        let pie = String::from_utf8(super::chart_xml_in(&pie, Some((560.0, 360.0))).0).unwrap();
+        assert!(pie.contains(r#"<c:dLbls><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1600"/>"#), "{pie}");
+        c.series[0].data_labels = None;
         let small = read(&c, Some((300.0, 200.0)));
         assert_eq!((small.text_size, small.title_size), (Some(9.0), Some(13.0)));
         // The file's own sizes are written back as they are, with or without a frame.
